@@ -3,6 +3,9 @@
 #include <string.h>
 #include "cbuffer.h"
 
+#define GET_POINTER_VAL(_base, _increment, _stepsize) \
+    (void *)((uint8_t *)(_base) + (_stepsize) * (_increment));
+
 struct cbuffer {
     void *data;
     void *wp;
@@ -39,9 +42,9 @@ void *cbuffer_get_write_pointer(struct cbuffer *cbuffer)
 
 void cbuffer_signal_element_written(struct cbuffer *cbuffer)
 {
-    void *endptr = (void *)((uint8_t *)(cbuffer->data) + cbuffer->size_of_element * cbuffer->size);
+    void *endptr = GET_POINTER_VAL(cbuffer->data, cbuffer->size_of_element, cbuffer->size);
 
-    cbuffer->wp = (void *)((uint8_t *)(cbuffer->wp) + cbuffer->size_of_element);
+    cbuffer->wp = GET_POINTER_VAL(cbuffer->wp, cbuffer->size_of_element, 1);
 
     if (endptr == cbuffer->wp) {
         cbuffer->wp = cbuffer->data;
@@ -61,9 +64,9 @@ void *cbuffer_get_read_pointer(struct cbuffer *cbuffer)
 
 void cbuffer_signal_element_read(struct cbuffer *cbuffer)
 {
-    void *endptr = (void *)((uint8_t *)(cbuffer->data) + cbuffer->size_of_element * cbuffer->size);
+    void *endptr = GET_POINTER_VAL(cbuffer->data, cbuffer->size_of_element, cbuffer->size);
 
-    cbuffer->rp = (void *)((uint8_t *)(cbuffer->rp) + cbuffer->size_of_element);
+    cbuffer->rp = GET_POINTER_VAL(cbuffer->rp, cbuffer->size_of_element, 1);
 
     if (endptr == cbuffer->rp) {
         cbuffer->rp = cbuffer->data;
