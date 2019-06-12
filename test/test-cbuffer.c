@@ -60,6 +60,33 @@ void test_full_write_and_readout(void **state)
     }
 }
 
+void test_wraparound(void **state)
+{
+    struct cbuffer *cbuffer = (struct cbuffer *)*state;
+    size_t index = 0;
+
+    /* Force wraparound */
+    for(size_t i = 0; i < NR_OF_TEST_ELEMENTS * 2; i++) {
+        int *wp = cbuffer_get_write_pointer(cbuffer);
+        assert_ptr_equal(&_test_data[index], wp);
+
+        *wp = i + 1;
+        cbuffer_signal_element_written(cbuffer);
+
+        int *rp = cbuffer_get_read_pointer(cbuffer);
+        assert_ptr_equal(&_test_data[index], rp);
+        assert_int_equal(*rp, i + 1);
+
+        cbuffer_signal_element_read(cbuffer);
+
+        index++;
+
+        if (index == NR_OF_TEST_ELEMENTS) {
+            index = 0;
+        }
+    }
+}
+
 int setup (void ** state)
 {
     struct cbuffer *cbuffer = cbuffer_init(_test_data, NR_OF_TEST_ELEMENTS, sizeof(_test_data[0]));
@@ -88,6 +115,7 @@ int main(void)
     {
         cmocka_unit_test_setup_teardown(test_adding_one_element, setup, teardown),
         cmocka_unit_test_setup_teardown(test_full_write_and_readout, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_wraparound, setup, teardown),
     };
 
     int count_fail_tests = cmocka_run_group_tests(test_init, NULL, NULL);
