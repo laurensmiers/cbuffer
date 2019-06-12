@@ -87,6 +87,45 @@ void test_wraparound(void **state)
     }
 }
 
+void test_overflow(void **state)
+{
+    /*
+     * When the circular buffer is full, we should return NULL when asking a write pointer
+     */
+    struct cbuffer *cbuffer = (struct cbuffer *)*state;
+
+    /* Fill the whole buffer */
+    for(size_t i = 0; i < NR_OF_TEST_ELEMENTS; i++) {
+        int *wp = cbuffer_get_write_pointer(cbuffer);
+        assert_ptr_equal(&_test_data[i], wp);
+
+        *wp = i + 1;
+        cbuffer_signal_element_written(cbuffer);
+    }
+
+    /* Next time we ask for a write pointer, we should be notified the buffer is full */
+    assert_ptr_equal(NULL, cbuffer_get_write_pointer(cbuffer));
+
+    /* When we read again an element, we should be able to write again */
+    assert_ptr_equal(&_test_data[0], cbuffer_get_read_pointer(cbuffer));
+    cbuffer_signal_element_read(cbuffer);
+
+    /* We should get a valid pointer now (and detect we wraparound) */
+    assert_ptr_equal(&_test_data[0], cbuffer_get_write_pointer(cbuffer));
+    cbuffer_signal_element_written(cbuffer);
+}
+
+void test_underrun(void **state)
+{
+    /*
+     * When the circular buffer is empty, we should return NULL when asking a read pointer
+     */
+    struct cbuffer *cbuffer = (struct cbuffer *)*state;
+
+    /* buffer is empty, we should not be able to get a read pointer */
+    assert_ptr_equal(NULL, cbuffer_get_read_pointer(cbuffer));
+}
+
 int setup (void ** state)
 {
     struct cbuffer *cbuffer = cbuffer_init(_test_data, NR_OF_TEST_ELEMENTS, sizeof(_test_data[0]));
@@ -116,6 +155,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_adding_one_element, setup, teardown),
         cmocka_unit_test_setup_teardown(test_full_write_and_readout, setup, teardown),
         cmocka_unit_test_setup_teardown(test_wraparound, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_overflow, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_underrun, setup, teardown),
     };
 
     int count_fail_tests = cmocka_run_group_tests(test_init, NULL, NULL);
